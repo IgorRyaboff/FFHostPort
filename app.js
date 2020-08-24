@@ -33,6 +33,7 @@ if (configPath) {
 
 function processRequest(req, res, isSecure) {
     let host = req.headers.host;
+    if (!host) return;
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.web(req, res, {
@@ -48,6 +49,7 @@ function processRequest(req, res, isSecure) {
 
 function wsUpgrade(req, socket, head, isSecure) {
     let host = req.headers.host;
+    if (!host) return;
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
