@@ -118,4 +118,4 @@ if (config.https) {
     }, processRequest).listen(config.https).on('upgrade', wsUpgrade);
 }
 
-console.log('HostPort started\nHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x]).join('\n'));
+console.log('FFHostPort started\nFFHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x]).join('\n'));
