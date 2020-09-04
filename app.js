@@ -21,11 +21,11 @@ function resError(code, response) {
 
 var configPath = process.argv.slice(2).join(' ');
 var config = {
-    http: 81,
+    http: 80,
     https: false,
     ws: true,
     map: {
-        "localhost": "http://localhost:80"
+        "localhost": 81
     }
 };
 var proxys = {};
@@ -59,7 +59,7 @@ function processRequest(req, res) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.web(req, res, {
-            target: config.map[host]
+            target: 'http://127.0.0.1:' + config.map[host]
         }, (err) => {
             resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
             console.error(`Cannot proxy request from ${host} to ${config.map[host]}: `, err);
@@ -82,7 +82,7 @@ function wsUpgrade(req, socket, head) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
-            target: config.map[host]
+            target: 'http://127.0.0.1:' + config.map[host]
         }, (err) => {});
     }
     else socket.end();
