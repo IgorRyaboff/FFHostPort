@@ -2,6 +2,23 @@ const httpProxy = require('http-proxy');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
+const stream = require('stream'); //This module is imported for proper JSDoc working
+const errorCodes = {
+    NO_HOST_HEADER: 1,
+    TARGET_HOST_UNAVAILABLE: 2,
+    CLIENT_HOST_UNKNOWN: 3
+}
+
+/**
+ * Print error page to client
+ * @param {number} code 
+ * @param {http.ServerResponse} response 
+ */
+function resError(code, response) {
+    response.writeHead(500);
+    response.end('This website is temporary unavailable. If you are webmaster, see log files or documentation<br/>Code: ' + code);
+}
+
 var configPath = process.argv.slice(2).join(' ');
 var config = {
     http: 81,
@@ -31,36 +48,44 @@ if (configPath) {
     }
 }
 
-function processRequest(req, res, isSecure) {
+/**
+ * 
+ * @param {http.IncomingMessage} req HTTP request object
+ * @param {http.ServerResponse} res HTTP response object
+ */
+function processRequest(req, res) {
     let host = req.headers.host;
-    if (!host) return;
+    if (!host) return resError(errorCodes.NO_HOST_HEADER, res);
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.web(req, res, {
             target: config.map[host]
+        }, (err) => {
+            resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
+            console.error(`Cannot proxy request from ${host} to ${config.map[host]}: `, err);
         });
     }
-    else {
-        res.writeHead(500);
-        res.end('Cannot route this hostname because it is not listed in proxy map');
-        console.log(`${host} is unknown`);
-    }
+    else resError(errorCodes.CLIENT_HOST_UNKNOWN, res);
 }
 
-function wsUpgrade(req, socket, head, isSecure) {
+/**
+ * 
+ * @param {http.IncomingMessage} req 
+ * @param {stream.Duplex} socket 
+ * @param {Buffer} head 
+ */
+function wsUpgrade(req, socket, head) {
     let host = req.headers.host;
-    if (!host) return;
+    if (!host) {
+        socket.end();
+    }
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
             target: config.map[host]
-        });
+        }, (err) => {});
     }
-    else {
-        res.writeHead(500);
-        res.end('Cannot route this hostname because it is not listed in proxy map');
-        console.log(`${host} is unknown`);
-    }
+    else socket.end();
 }
 
 for (let i in config.map) {
@@ -93,4 +118,4 @@ if (config.https) {
     }, processRequest).listen(config.https).on('upgrade', wsUpgrade);
 }
 
-console.log('FFRoute started\nFFRoute will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x]).join('\n'));
+console.log('HostPort started\nHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x]).join('\n'));
