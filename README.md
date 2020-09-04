@@ -6,7 +6,9 @@ This is a simple light-weight app that allows you to route different hosts to di
 For example, you can run several apps with HTTP servers, create several domains and assign all of the domains to your server. FFHostPort will route all requests from port 80/443 to your applications.
 
 ## Installing
-To install FFHostPort, clone this repository using git
+To install FFHostPort, use npm:
+
+`npm i -g ffhostport`
 
 ## Using
 To start FFHostPort, go to FFHostPort directory and run command `node app <config_path>`. Now we'll talk about config file.
