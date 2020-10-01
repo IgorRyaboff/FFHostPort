@@ -58,12 +58,24 @@ function processRequest(req, res) {
     if (!host) return resError(errorCodes.NO_HOST_HEADER, res);
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
-        proxy.web(req, res, {
+        let attempts = 0;
+
+        let doAttempt = () => proxy.web(req, res, {
             target: 'http://127.0.0.1:' + config.map[host]
         }, (err) => {
-            resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
-            console.error(`Cannot proxy request from ${host} to ${config.map[host]}: `, err);
+            attempts++;
+            if (attempts >= 3) {
+                resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
+                console.error(`Cannot proxy request (3 attempts done) from ${host} to port ${config.map[host]}: `, err);
+            }
+            else {
+                console.error(`Failed attempt ${attempts} for request from ${host} to port ${config.map[host]}`);
+                setTimeout(() => doAttempt(), 3000);
+            }
+            
         });
+
+        doAttempt();
     }
     else resError(errorCodes.CLIENT_HOST_UNKNOWN, res);
 }
