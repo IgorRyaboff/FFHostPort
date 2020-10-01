@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/IgorRyaboff/HostPort.git"
+    "url": "git+https://github.com/IgorRyaboff/FFHostPort.git"
   },
   "author": "Igor Ryabov",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/IgorRyaboff/HostPort/issues"
+    "url": "https://github.com/IgorRyaboff/FFHostPort/issues"
   },
-  "homepage": "https://github.com/IgorRyaboff/HostPort#readme",
+  "homepage": "https://github.com/IgorRyaboff/FFHostPort#readme",
   "dependencies": {
     "http-proxy": "^1.18.1"
   }
