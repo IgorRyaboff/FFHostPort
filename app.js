@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const httpProxy = require('http-proxy');
 const http = require('http');
 const https = require('https');
