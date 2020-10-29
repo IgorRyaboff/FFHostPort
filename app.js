@@ -22,6 +22,10 @@ function resError(code, response) {
 }
 
 var configPath = process.argv.slice(2).join(' ');
+
+/**
+ * @type { {http : number, https : number|boolean, ws : boolean, map: Object<string, { port : number, redirectUnsecure : boolean }>} }
+ */
 var config = {
     http: 80,
     https: false,
@@ -38,6 +42,12 @@ function verifyConfig(data) {
     if (data.key) data.key = fs.readFileSync(data.key).toString();
     if (data.cert) data.cert = fs.readFileSync(data.cert).toString();
     if (data.ca) data.ca = fs.readFileSync(data.ca).toString();
+    for (let i in data.map) {
+        if (typeof data.map[i] == 'number') data.map[i] = {
+            port: data.map[i],
+            redirectUnsecure: false
+        };
+    }
     return data;
 }
 
@@ -54,24 +64,30 @@ if (configPath) {
  * 
  * @param {http.IncomingMessage} req HTTP request object
  * @param {http.ServerResponse} res HTTP response object
+ * @param {boolean} isSecure Is connection secure
  */
-function processRequest(req, res) {
+function processRequest(req, res, isSecure) {
     let host = req.headers.host;
     if (!host) return resError(errorCodes.NO_HOST_HEADER, res);
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
+        if (config.map[host].redirectUnsecure && !isSecure) {
+            res.setHeader('Location', `https://${host}${req.url}`);
+            res.statusCode = 301;
+            res.end();
+            return;
+        }
         let attempts = 0;
-
         let doAttempt = () => proxy.web(req, res, {
-            target: 'http://127.0.0.1:' + config.map[host]
+            target: 'http://127.0.0.1:' + config.map[host].port
         }, (err) => {
             attempts++;
             if (attempts >= 3) {
                 resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
-                console.error(`Cannot proxy request (3 attempts done) from ${host} to port ${config.map[host]}: `, err);
+                console.error(`Cannot proxy request (3 attempts done) from ${host} to port ${config.map[host].port}: `, err);
             }
             else {
-                console.error(`Failed attempt ${attempts} for request from ${host} to port ${config.map[host]}`);
+                console.error(`Failed attempt ${attempts} for request from ${host} to port ${config.map[host].port}`);
                 setTimeout(() => doAttempt(), 3000);
             }
             
@@ -96,7 +112,7 @@ function wsUpgrade(req, socket, head) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
-            target: 'http://127.0.0.1:' + config.map[host]
+            target: 'http://127.0.0.1:' + config.map[host].port
         }, (err) => {});
     }
     else socket.end();
@@ -104,12 +120,12 @@ function wsUpgrade(req, socket, head) {
 
 for (let i in config.map) {
     proxys[i] = new httpProxy.createProxyServer({
-        target: config.map[i],
+        target: config.map[i].port,
         ws: config.ws
     });
 
     if (config.https) sproxys[i] = new httpProxy.createProxyServer({
-        target: config.map[i],
+        target: config.map[i].port,
         ws: config.ws,
         ssl: {
             key: config.key,
@@ -129,7 +145,8 @@ if (config.https) {
         key: config.key,
         cert: config.cert,
         ca: config.ca
-    }, processRequest).listen(config.https).on('upgrade', wsUpgrade);
+    }, (rq, rp) => processRequest(rq, rp, true)).listen(config.https).on('upgrade', wsUpgrade);
 }
 
-console.log('FFHostPort started\nFFHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x]).join('\n'));
+console.log(config.map);
+console.log('FFHostPort started\nFFHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x].port + (config.map[x].redirectUnsecure ? ' (secure only)' : ' (unsecure allowed)')).join('\n'));

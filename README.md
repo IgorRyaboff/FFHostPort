@@ -21,7 +21,10 @@ There is an example of config file:
     "https": 443,
     "ws": true,
     "map": {
-        "example.com": 81,
+        "example.com": {
+            "port": 81,
+            "redirectUnsecure": true
+        },
         "shop.example.com": 82
     },
     "key": "/etc/letsencrypt/live/example.com/privkey.pem",
@@ -35,7 +38,9 @@ There is an example of config file:
 
 `ws` - Allow WebSocket proxying
 
-`map` - Map rules. A key of this object is hostname and the value is target port
+`map` - Map rules. A key of this object is hostname. The value can be:
+- Object with properties `port` (which is target port) and boolean `redirectUnsecure` (if `true`, FFHostPort will redirect all HTTP requests to HTTPS first, `false` by default),
+- Just target port. In this case, `redirectUnsecure` is `false` by default.
 
 `key` - "key" object for HTTPS server (only required if `https` option is `true`)
 
