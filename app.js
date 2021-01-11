@@ -79,7 +79,7 @@ function processRequest(req, res, isSecure) {
         }
         let attempts = 0;
         let doAttempt = () => proxy.web(req, res, {
-            target: 'http://127.0.0.1:' + config.map[host].port
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://127.0.0.1:${config.map[host].port}`
         }, (err) => {
             attempts++;
             if (attempts >= 3) {
