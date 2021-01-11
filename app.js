@@ -112,7 +112,7 @@ function wsUpgrade(req, socket, head) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
-            target: 'http://127.0.0.1:' + config.map[host].port
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://127.0.0.1:${config.map[host].port}`
         }, (err) => {});
     }
     else socket.end();
