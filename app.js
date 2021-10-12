@@ -16,9 +16,15 @@ const errorCodes = {
  * @param {number} code 
  * @param {http.ServerResponse} response 
  */
-function resError(code, response) {
-    response.writeHead(500);
-    response.end('This website is temporary unavailable. If you are webmaster, see log files or documentation<br/>Code: ' + code);
+function resError(reason, response, code = 500) {
+    response.setHeader('Content-type', 'text/html');
+    response.writeHead(code);
+    response.end(`
+    <h2>Request failed</h2>
+    <div>${reason}</div>
+    <hr/>
+    <div style="text-size:smaller"><i>FFHostPort on ${require('os').hostname()}</i></div>
+    `);
 }
 
 var configPath = process.argv.slice(2).join(' ');
@@ -68,7 +74,7 @@ if (configPath) {
  */
 function processRequest(req, res, isSecure) {
     let host = req.headers.host;
-    if (!host) return resError(errorCodes.NO_HOST_HEADER, res);
+    if (!host) return resError('There is no "host" header in request. Looks like the app from which you are trying to access this resource is not working correctly', res, 401);
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         if (config.map[host].redirectUnsecure && !isSecure) {
@@ -81,21 +87,13 @@ function processRequest(req, res, isSecure) {
         let doAttempt = () => proxy.web(req, res, {
             target: `http${config.map[host].isHTTPS ? 's' : ''}://127.0.0.1:${config.map[host].port}`
         }, (err) => {
-            attempts++;
-            if (attempts >= 3) {
-                resError(errorCodes.TARGET_HOST_UNAVAILABLE, res);
-                console.error(`Cannot proxy request (3 attempts done) from ${host} to port ${config.map[host].port}: `, err);
-            }
-            else {
-                console.error(`Failed attempt ${attempts} for request from ${host} to port ${config.map[host].port}`);
-                setTimeout(() => doAttempt(), 3000);
-            }
-            
+            resError('Target host is unavailable. Please contact administrator of this resource', res, 502);
+            console.error(`Cannot proxy request from ${host} to ${config.map[host]}: `, err);
         });
 
         doAttempt();
     }
-    else resError(errorCodes.CLIENT_HOST_UNKNOWN, res);
+    else resError(`Host "${host}" is unknown. Please contact administrator of this resource`, res, 404);
 }
 
 /**
