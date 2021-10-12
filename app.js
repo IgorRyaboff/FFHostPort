@@ -30,41 +30,44 @@ function resError(reason, response, code = 500) {
 var configPath = process.argv.slice(2).join(' ');
 
 /**
- * @type { {http : number, https : number|boolean, ws : boolean, map: Object<string, { port : number, redirectUnsecure : boolean }>} }
+ * @type { {http : number, https : number|boolean, ws : boolean, map: Object<string, { host : string, port : number, redirectUnsecure : boolean }>} }
  */
 var config = {
     http: 80,
     https: false,
     ws: true,
     map: {
-        "localhost": 81
+        "localhost": {
+            port: 81
+        }
     }
 };
 var proxys = {};
 var sproxys = {};
 var proxy = httpProxy.createProxyServer();
 
-function verifyConfig(data) {
-    if (data.key) data.key = fs.readFileSync(data.key).toString();
-    if (data.cert) data.cert = fs.readFileSync(data.cert).toString();
-    if (data.ca) data.ca = fs.readFileSync(data.ca).toString();
-    for (let i in data.map) {
-        if (typeof data.map[i] == 'number') data.map[i] = {
-            port: data.map[i],
+function verifyConfig() {
+    if (config.key) config.key = fs.readFileSync(config.key).toString();
+    if (config.cert) config.cert = fs.readFileSync(config.cert).toString();
+    if (config.ca) config.ca = fs.readFileSync(config.ca).toString();
+    for (let i in config.map) {
+        if (typeof config.map[i] == 'number') config.map[i] = {
+            port: config.map[i],
             redirectUnsecure: false
         };
+        if (!config.map[i].host) config.map[i].host = '127.0.0.1';
     }
-    return data;
 }
 
 if (configPath) {
     try {
-        config = verifyConfig(JSON.parse(fs.readFileSync(configPath).toString()));
+        config = JSON.parse(fs.readFileSync(configPath).toString());
     }
     catch (e) {
         console.log('Cannot load config file: ' + e.message);
     }
 }
+verifyConfig();
 
 /**
  * 
@@ -85,10 +88,12 @@ function processRequest(req, res, isSecure) {
         }
         let attempts = 0;
         let doAttempt = () => proxy.web(req, res, {
-            target: `http${config.map[host].isHTTPS ? 's' : ''}://127.0.0.1:${config.map[host].port}`
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`
         }, (err) => {
-            resError('Target host is unavailable. Please contact administrator of this resource', res, 502);
-            console.error(`Cannot proxy request from ${host} to ${config.map[host]}: `, err);
+            attempts++;
+            console.error(`Cannot proxy request from ${host} to ${config.map[host].port} (attempt ${attempts}/3): `, err);
+            if (attempts < 3) doAttempt();
+            else resError('Target host is unavailable. Please contact administrator of this resource', res, 502);
         });
 
         doAttempt();
@@ -110,7 +115,7 @@ function wsUpgrade(req, socket, head) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
-            target: `http${config.map[host].isHTTPS ? 's' : ''}://127.0.0.1:${config.map[host].port}`
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`
         }, (err) => {});
     }
     else socket.end();
@@ -147,4 +152,4 @@ if (config.https) {
 }
 
 console.log(config.map);
-console.log('FFHostPort started\nFFHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(x => x + ' -> ' + config.map[x].port + (config.map[x].redirectUnsecure ? ' (secure only)' : ' (unsecure allowed)')).join('\n'));
+console.log('FFHostPort started\nFFHostPort will proxy the following hostnames:\n' + Object.keys(config.map).map(i => `${i} -> ${config.map[i].host == '127.0.0.1' ? '' : config.map[i].host + ':'}${config.map[i].port} (${config.map[i].redirectUnsecure ? 'secure only' : 'unsecure allowed'})`).join('\n'));

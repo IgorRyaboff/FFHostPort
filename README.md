@@ -1,6 +1,6 @@
 # FFHostPort
 
-This is a simple light-weight app that allows you to route different hosts to different TCP ports on one server.
+This is a simple light-weight app that allows you to route requests from different domains to different ports on one server.
 
 
 For example, you can run several apps with HTTP servers, create several domains and assign all of the domains to your server. FFHostPort will route all requests from port 80/443 to your applications.
@@ -22,6 +22,7 @@ There is an example of config file:
     "ws": true,
     "map": {
         "example.com": {
+            "host": "192.168.0.101",
             "port": 81,
             "redirectUnsecure": true
         },
@@ -38,18 +39,12 @@ There is an example of config file:
 
 `ws` - Allow WebSocket proxying
 
-`map` - Map rules. A key of this object is hostname. The value can be:
-- Object with properties `port` (which is target port) and boolean `redirectUnsecure` (if `true`, FFHostPort will redirect all HTTP requests to HTTPS first, `false` by default),
-- Just target port. In this case, `redirectUnsecure` is `false` by default.
+`map` - Map rules. A key of this object is source hostname. The value can be:
+- Object with properties `host` (IP or domain of target, `127.0.0.1` by default) `port` (which is target port) and boolean `redirectUnsecure` (if `true`, FFHostPort will redirect all HTTP requests to HTTPS first, `false` by default),
+- Just target port. In this case, `redirectUnsecure` is `false` and `host` is `127.0.0.1` by default.
 
 `key` - "key" object for HTTPS server (only required if `https` option is `true`)
 
 `cert` - "cert" object for HTTPS server (only required if `https` option is `true`)
 
 `ca` - "ca" object for HTTPS server (only required if `https` option is `true`)
-
-## Errors
-FFHostPort can return error page with error code instead of expected webpage. It can give you one of the following error codes:
-1. Client didn't supply the `host` header
-2. There has been some error connecting to target port (details will be in `stderr` console output)
-3. Given hostname is not listed in config file
