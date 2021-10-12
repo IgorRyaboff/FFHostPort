@@ -1,8 +1,0 @@
-{
-    "http": 80,
-    "https": false,
-    "ws": true,
-    "map": {
-        "localhot": 81
-    }
-}
