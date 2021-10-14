@@ -92,7 +92,7 @@ function processRequest(req, res, isSecure) {
         }, (err) => {
             attempts++;
             console.error(`Cannot proxy request from ${host} to ${config.map[host].port} (attempt ${attempts}/3): `, err);
-            if (attempts < 3) doAttempt();
+            if (attempts < 3) setTimeout(() => doAttempt(), 3000);
             else resError('Target host is unavailable. Please contact administrator of this resource', res, 502);
         });
 
