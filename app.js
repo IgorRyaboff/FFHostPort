@@ -88,7 +88,8 @@ function processRequest(req, res, isSecure) {
         }
         let attempts = 0;
         let doAttempt = () => proxy.web(req, res, {
-            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`,
+            xfwd: true
         }, (err) => {
             attempts++;
             console.error(`Cannot proxy request from ${host} to ${config.map[host].port} (attempt ${attempts}/3): `, err);
@@ -115,7 +116,8 @@ function wsUpgrade(req, socket, head) {
     if (host.indexOf(':') != -1) host = host.substring(0, host.indexOf(':'));
     if (config.map[host]) {
         proxy.ws(req, socket, head, {
-            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`
+            target: `http${config.map[host].isHTTPS ? 's' : ''}://${config.map[host].host}:${config.map[host].port}`,
+            xfwd: true
         }, (err) => {});
     }
     else socket.end();
@@ -140,7 +142,7 @@ for (let i in config.map) {
 
 var httpServer;
 if (config.http) {
-    httpServer = http.createServer(processRequest).listen(config.http).on('upgrade', wsUpgrade);
+    httpServer = http.createServer(processRequest).listen(config.http, '0.0.0.0').on('upgrade', wsUpgrade);
 }
 var httpsServer;
 if (config.https) {
@@ -148,7 +150,7 @@ if (config.https) {
         key: config.key,
         cert: config.cert,
         ca: config.ca
-    }, (rq, rp) => processRequest(rq, rp, true)).listen(config.https).on('upgrade', wsUpgrade);
+    }, (rq, rp) => processRequest(rq, rp, true)).listen(config.https, '0.0.0.0').on('upgrade', wsUpgrade);
 }
 
 console.log(config.map);
